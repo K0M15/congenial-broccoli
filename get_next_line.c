@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:50:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/10/21 11:29:08 by afelger          ###   ########.fr       */
+/*   Updated: 2024/10/21 16:47:18 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #endif /* BUFFER_SIZE */
 
 #ifndef STRING_BUFF_SIZE
-# define STRING_BUFF_SIZE 1000
+# define STRING_BUFF_SIZE 2*1000*1000
 #endif /* STRING_BUFF_SIZE */
 
 void	*create_new_buffer(t_lasttime **data)
@@ -30,62 +30,71 @@ void	*create_new_buffer(t_lasttime **data)
 	if ((*data)->buffer == NULL)
 		return (NULL);
 	(*data)->allocated = STRING_BUFF_SIZE;
+	(*data)->filled = 0;
 	return (*data);
 }
 
-void	shift_buffer(t_lasttime *data)
+void	shift_buffer(t_lasttime *data, size_t startpos)
 {
 	size_t	count;
 
 	count = 0;
-	while(data->pos + count < data->filled)
+	while(startpos + count < data->filled)
 	{
-		data->buffer[count] = data->buffer[data->pos + count];
+		data->buffer[count] = data->buffer[startpos + count];
 		count++;
 	}
-	data->filled -= count;
-	data->pos = 0;
+	while(count < data->filled)
+	{
+		data->buffer[count] = 0;
+		count++;
+	}
+	data->filled -= startpos;
 }
 
-char	*get_string(t_lasttime *data)
+int	get_string(t_lasttime *data, char **res)
 {
-	char *result;
+	size_t		counter;
 
-	while(data->buffer[data->pos] != '\n')
-		data->pos++;
-	result = malloc(data->pos + 2);
-	if (!result)
-		return (NULL);
-	data->pos = 0;
-	while (data->buffer[data->pos] != '\n')
+	counter = 0;
+	while(data->buffer[counter] != '\n' && data->buffer[counter] && counter < data->allocated)
+		counter++;
+	if (data->buffer[counter] != '\n')
+		return (0);
+	*res = malloc(counter + 1);
+	if (!*res)
+		return (-1);
+	counter = 0;
+	while (data->buffer[counter] != '\n')
 	{
-		result[data->pos] = data->buffer[data->pos];
-		data->pos++;
+		(*res)[counter] = data->buffer[counter];
+		counter++;
 	}
-	result[data->pos + 1] = '\n'; 
-	result[data->pos + 2] = '\0';
-	shift_buffer(data);
-	return (result);
+	(*res)[counter] = '\n'; 
+	(*res)[counter + 1] = '\0';
+	shift_buffer(data, counter + 1);
+	return (1);
 }
 
 void	*read_into_buffer(t_lasttime *data, size_t amount, int fd)
 {
-	long long	amount_read;
-	if (amount + data->pos > data->allocated)
-		assert(0); // not implemented dynamic buffer scaling
+	long long		amount_read;
+	unsigned long	pos;
+	
 	while(1)
 	{
 		if (amount + data->filled > data->allocated)
 			assert(0); // not implemented dynamic buffer scaling
 		amount_read = read(fd, &(data->buffer[data->filled]), amount);
 		if (amount_read == -1)
-			return (NULL);	//
+			return (NULL);	//error
 		data->filled += amount_read;
 		if ((size_t) amount_read != amount)
 			assert(0); // Fileending, not implemented
-		while(data->buffer[data->pos] != '\n' && data->pos < data->filled + 1)
-			data->pos++;
-		if (data->buffer[data->pos] == '\n')
+		pos = 0;
+		while(data->buffer[pos] != '\n' && pos < data->filled + 1)
+			pos++;
+		if (data->buffer[pos] == '\n')
 		{
 			return NULL;
 		}
