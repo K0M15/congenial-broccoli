@@ -6,20 +6,11 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:50:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/10/21 16:47:18 by afelger          ###   ########.fr       */
+/*   Updated: 2024/10/23 12:15:01 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <assert.h>
-
-#ifndef BUFFER_SIZE
-# define BUFFER_SIZE 42
-#endif /* BUFFER_SIZE */
-
-#ifndef STRING_BUFF_SIZE
-# define STRING_BUFF_SIZE 2*1000*1000
-#endif /* STRING_BUFF_SIZE */
 
 void	*create_new_buffer(t_lasttime **data)
 {
@@ -34,9 +25,9 @@ void	*create_new_buffer(t_lasttime **data)
 	return (*data);
 }
 
-void	shift_buffer(t_lasttime *data, size_t startpos)
+void	shift_buffer(t_lasttime *data, long startpos)
 {
-	size_t	count;
+	long	count;
 
 	count = 0;
 	while(startpos + count < data->filled)
@@ -52,19 +43,14 @@ void	shift_buffer(t_lasttime *data, size_t startpos)
 	data->filled -= startpos;
 }
 
-int	get_string(t_lasttime *data, char **res)
+int	get_string(t_lasttime *data, char **res, int endpos)
 {
 	size_t		counter;
 
 	counter = 0;
-	while(data->buffer[counter] != '\n' && data->buffer[counter] && counter < data->allocated)
-		counter++;
-	if (data->buffer[counter] != '\n')
-		return (0);
-	*res = malloc(counter + 1);
+	*res = malloc(endpos + 1);
 	if (!*res)
-		return (-1);
-	counter = 0;
+		return (FT_IO_ERROR);
 	while (data->buffer[counter] != '\n')
 	{
 		(*res)[counter] = data->buffer[counter];
@@ -73,13 +59,13 @@ int	get_string(t_lasttime *data, char **res)
 	(*res)[counter] = '\n'; 
 	(*res)[counter + 1] = '\0';
 	shift_buffer(data, counter + 1);
-	return (1);
+	return (FT_FOUND_STR);
 }
 
-void	*read_into_buffer(t_lasttime *data, size_t amount, int fd)
+int	read_into_buffer(t_lasttime *data, long amount, int fd)
 {
 	long long		amount_read;
-	unsigned long	pos;
+	long			pos;
 	
 	while(1)
 	{
@@ -87,18 +73,50 @@ void	*read_into_buffer(t_lasttime *data, size_t amount, int fd)
 			assert(0); // not implemented dynamic buffer scaling
 		amount_read = read(fd, &(data->buffer[data->filled]), amount);
 		if (amount_read == -1)
-			return (NULL);	//error
+			return (FT_IO_ERROR);	//error
 		data->filled += amount_read;
-		if ((size_t) amount_read != amount)
-			assert(0); // Fileending, not implemented
+		if (amount_read != amount)
+			return FT_EOF_FOUND;
 		pos = 0;
 		while(data->buffer[pos] != '\n' && pos < data->filled + 1)
 			pos++;
 		if (data->buffer[pos] == '\n')
-		{
-			return NULL;
-		}
+			return FT_IO_SUCCESS;
 	}
+}
+
+int	check_buffer_string(const t_lasttime *data, long *size)
+{
+	*size = 0;
+	while(data->buffer[*size] != '\n' && data->buffer[*size] && *size < data->allocated)
+		(*size)++;
+	if (data->buffer[*size] != '\n')
+		return (FT_FOUND_NO_STR);
+	return (FT_FOUND_STR);
+}
+
+char	*handle_eof(t_lasttime *data)
+{
+	char	*lastline;
+	long	count;
+
+	if(data->filled == 0)
+		return (NULL);
+	if(check_buffer_string(data, &count) == FT_FOUND_STR)
+	{
+		if (get_string(data, &lastline, count) == FT_IO_ERROR)
+			return (NULL);
+	}
+	else
+	{
+		lastline = malloc(count + 1);
+		count = -1;
+		while(++count < data->filled)
+			lastline[count] = data->buffer[count];
+		lastline[count] = 0;
+		shift_buffer(data, count);
+	}
+	return (lastline);
 }
 
 void free_buffer(t_lasttime *data)
@@ -110,14 +128,22 @@ void free_buffer(t_lasttime *data)
 char	*get_next_line(int fd)
 {
 	static t_lasttime	*data;
+	char				*res;
+	int					status;
+	long				len;
 	
-	if (fd == -1)
+	if (fd <= -1 || read(fd, 0, 0))
 		return (NULL);
 	if (data == NULL)
 		if(create_new_buffer(&data) == NULL)
 			return (NULL);
-	// do read into buffer
-	// if lineend is detected, return line
-	// cleanup buffer
-	return "";
+	while(check_buffer_string(data, &len) == FT_FOUND_NO_STR)
+	{
+		status = read_into_buffer(data, BUFFER_SIZE, fd);
+		if(status == FT_EOF_FOUND)
+			return (handle_eof(data));
+	}
+	if (get_string(data, &res, len) == FT_FOUND_STR)
+		return (res);
+	return (NULL);
 }
