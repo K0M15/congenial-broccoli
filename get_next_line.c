@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:50:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/10/23 12:15:01 by afelger          ###   ########.fr       */
+/*   Updated: 2024/10/25 15:02:18 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,28 @@ void	*create_new_buffer(t_lasttime **data)
 	(*data)->allocated = STRING_BUFF_SIZE;
 	(*data)->filled = 0;
 	return (*data);
+}
+
+int	increase_buffer_size(t_lasttime *data)
+{
+	long counter;
+	char *newBuff;
+
+	newBuff = malloc(data->allocated * 2);
+	if(newBuff == NULL)
+		return (0);
+	counter = -1;
+	data->allocated *= 2;
+	while(++counter < data->filled)
+		newBuff[counter] = data->buffer[counter];
+	while(counter < data->allocated)
+	{
+		newBuff[counter] = 0;
+		counter++;
+	}
+	free(data->buffer);
+	data->buffer = newBuff;
+	return (1);
 }
 
 void	shift_buffer(t_lasttime *data, long startpos)
@@ -69,18 +91,19 @@ int	read_into_buffer(t_lasttime *data, long amount, int fd)
 	
 	while(1)
 	{
-		if (amount + data->filled > data->allocated)
-			assert(0); // not implemented dynamic buffer scaling
+		while (amount + data->filled > data->allocated)
+			if (!increase_buffer_size(data))
+				return (FT_IO_ERROR);
 		amount_read = read(fd, &(data->buffer[data->filled]), amount);
 		if (amount_read == -1)
-			return (FT_IO_ERROR);	//error
+			return (FT_IO_ERROR);
+		pos = data->filled;
 		data->filled += amount_read;
-		if (amount_read != amount)
-			return FT_EOF_FOUND;
-		pos = 0;
-		while(data->buffer[pos] != '\n' && pos < data->filled + 1)
+		if (amount_read == 0)
+			return (FT_EOF_FOUND);
+		while (pos < data->allocated && data->buffer[pos] != '\n' && pos < data->filled + 1)
 			pos++;
-		if (data->buffer[pos] == '\n')
+		if (pos < data->allocated && data->buffer[pos] == '\n')
 			return FT_IO_SUCCESS;
 	}
 }
@@ -88,41 +111,47 @@ int	read_into_buffer(t_lasttime *data, long amount, int fd)
 int	check_buffer_string(const t_lasttime *data, long *size)
 {
 	*size = 0;
-	while(data->buffer[*size] != '\n' && data->buffer[*size] && *size < data->allocated)
+	while(*size < data->allocated && data->buffer[*size] != '\n' && data->buffer[*size])
 		(*size)++;
+	if(*size >= data-> allocated)
+		return (FT_FOUND_NO_STR);
 	if (data->buffer[*size] != '\n')
 		return (FT_FOUND_NO_STR);
 	return (FT_FOUND_STR);
 }
 
-char	*handle_eof(t_lasttime *data)
+char	*handle_eof(t_lasttime **data)
 {
 	char	*lastline;
 	long	count;
 
-	if(data->filled == 0)
-		return (NULL);
-	if(check_buffer_string(data, &count) == FT_FOUND_STR)
+	if((*data)->filled == 0)
+		return (free_buffer(data), NULL);
+	if(check_buffer_string((*data), &count) == FT_FOUND_STR)
 	{
-		if (get_string(data, &lastline, count) == FT_IO_ERROR)
-			return (NULL);
+		if (get_string((*data), &lastline, count) == FT_IO_ERROR)
+			return (free_buffer(data), NULL);
 	}
 	else
 	{
+		if(count == 0)
+			return (NULL);
 		lastline = malloc(count + 1);
 		count = -1;
-		while(++count < data->filled)
-			lastline[count] = data->buffer[count];
+		while(++count < (*data)->filled)
+			lastline[count] = (*data)->buffer[count];
 		lastline[count] = 0;
-		shift_buffer(data, count);
+		shift_buffer((*data), count);
 	}
+	free_buffer(data);
 	return (lastline);
 }
 
-void free_buffer(t_lasttime *data)
+void free_buffer(t_lasttime **data)
 {
-	free(data->buffer);
-	free(data);
+	free((*data)->buffer);
+	free((*data));
+	*data = NULL;
 }
 
 char	*get_next_line(int fd)
@@ -141,9 +170,11 @@ char	*get_next_line(int fd)
 	{
 		status = read_into_buffer(data, BUFFER_SIZE, fd);
 		if(status == FT_EOF_FOUND)
-			return (handle_eof(data));
+			return (handle_eof(&data));
+		if(status == -1)
+			data->buff
 	}
-	if (get_string(data, &res, len) == FT_FOUND_STR)
+	if (get_string(data, &res, len + 1) == FT_FOUND_STR)
 		return (res);
 	return (NULL);
 }

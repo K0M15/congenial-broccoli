@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:45:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/10/23 12:13:12 by afelger          ###   ########.fr       */
+/*   Updated: 2024/10/25 14:18:17 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@
 # endif /* BUFFER_SIZE */
 
 # ifndef STRING_BUFF_SIZE
-#  define STRING_BUFF_SIZE 2*1000
+#  define STRING_BUFF_SIZE BUFFER_SIZE
 # endif /* STRING_BUFF_SIZE */
 
 typedef struct s_lasttime
@@ -78,7 +78,7 @@ int		read_into_buffer(t_lasttime *data, long amount, int fd);
  * @param data (t_lastttime *) the object
  * @return (void)
  */
-void	free_buffer(t_lasttime *data);
+void	free_buffer(t_lasttime **data);
 /**
  * Checks the buffer for a \n.
  * @param data (t_lasttime)  the buffer struct
