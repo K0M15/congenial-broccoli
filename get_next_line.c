@@ -5,176 +5,110 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/10/21 09:50:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/10/25 15:02:18 by afelger          ###   ########.fr       */
+/*   Created: 2024/10/25 15:36:21 by afelger           #+#    #+#             */
+/*   Updated: 2024/10/29 17:43:23 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-void	*create_new_buffer(t_lasttime **data)
+int	ft_strlen(char *str)
 {
-	*data = malloc(sizeof(t_lasttime));
-	if (*data == NULL)
-		return (NULL);
-	(*data)->buffer = malloc(STRING_BUFF_SIZE);
-	if ((*data)->buffer == NULL)
-		return (NULL);
-	(*data)->allocated = STRING_BUFF_SIZE;
-	(*data)->filled = 0;
-	return (*data);
+	int	c;
+	c = 0;
+	while(str[c])
+		c++;
+	return (c);
 }
 
-int	increase_buffer_size(t_lasttime *data)
+/**
+ * Concats one string to another, requres that src is the size of BUFFER_SIZE or less.
+ * Input Memory will be free'd
+ * @param dest	(char**) freeable string, zero terminated
+ * @param src	(const char*) string of size BUFFER_SIZE
+ * @return (int) 
+ */
+int		cat_and_free(char **dest, const char *src)
 {
-	long counter;
-	char *newBuff;
+	int		dest_len;
+	char	*dest_new;
+	int		c;
 
-	newBuff = malloc(data->allocated * 2);
-	if(newBuff == NULL)
-		return (0);
-	counter = -1;
-	data->allocated *= 2;
-	while(++counter < data->filled)
-		newBuff[counter] = data->buffer[counter];
-	while(counter < data->allocated)
+	dest_len = ft_strlen(*dest) + 1;
+	dest_new = malloc(dest_len + BUFFER_SIZE);
+	c = 0;
+	while(dest[c])
 	{
-		newBuff[counter] = 0;
-		counter++;
+		dest_new[c] = (*dest)[c];
+		c++;
 	}
-	free(data->buffer);
-	data->buffer = newBuff;
-	return (1);
+	while(c - dest_len < BUFFER_SIZE)
+		dest_new[c] = src[c - dest_len];
+	dest_new[c] = 0;
+	free(*dest);
+	*dest = dest_new;
+	return 0;
 }
 
-void	shift_buffer(t_lasttime *data, long startpos)
+int	has_char(char *str, char c, int *pos)
 {
-	long	count;
-
-	count = 0;
-	while(startpos + count < data->filled)
+	while (*str)
 	{
-		data->buffer[count] = data->buffer[startpos + count];
-		count++;
+		*pos = c - 1;
+		if(*str == c)
+			return (c-1);
+		str++;
 	}
-	while(count < data->filled)
-	{
-		data->buffer[count] = 0;
-		count++;
-	}
-	data->filled -= startpos;
+	return (0);
 }
 
-int	get_string(t_lasttime *data, char **res, int endpos)
+int extract_string(char **str, char **remainder, int pos)
 {
-	size_t		counter;
+	char	*result;
+	int		c;
 
-	counter = 0;
-	*res = malloc(endpos + 1);
-	if (!*res)
-		return (FT_IO_ERROR);
-	while (data->buffer[counter] != '\n')
+	result = malloc(pos + 2);
+	result[pos + 1] = 0;
+	c = 0;
+	while (c <= pos)
 	{
-		(*res)[counter] = data->buffer[counter];
-		counter++;
+		result[c] = (*str)[c];
+		c++;
 	}
-	(*res)[counter] = '\n'; 
-	(*res)[counter + 1] = '\0';
-	shift_buffer(data, counter + 1);
-	return (FT_FOUND_STR);
-}
-
-int	read_into_buffer(t_lasttime *data, long amount, int fd)
-{
-	long long		amount_read;
-	long			pos;
-	
-	while(1)
+	c = 1;
+	while(str[pos + c] && c <= BUFFER_SIZE)
 	{
-		while (amount + data->filled > data->allocated)
-			if (!increase_buffer_size(data))
-				return (FT_IO_ERROR);
-		amount_read = read(fd, &(data->buffer[data->filled]), amount);
-		if (amount_read == -1)
-			return (FT_IO_ERROR);
-		pos = data->filled;
-		data->filled += amount_read;
-		if (amount_read == 0)
-			return (FT_EOF_FOUND);
-		while (pos < data->allocated && data->buffer[pos] != '\n' && pos < data->filled + 1)
-			pos++;
-		if (pos < data->allocated && data->buffer[pos] == '\n')
-			return FT_IO_SUCCESS;
+		(*remainder)[c] = (*str)[pos+c];
+		pos++;
 	}
-}
-
-int	check_buffer_string(const t_lasttime *data, long *size)
-{
-	*size = 0;
-	while(*size < data->allocated && data->buffer[*size] != '\n' && data->buffer[*size])
-		(*size)++;
-	if(*size >= data-> allocated)
-		return (FT_FOUND_NO_STR);
-	if (data->buffer[*size] != '\n')
-		return (FT_FOUND_NO_STR);
-	return (FT_FOUND_STR);
-}
-
-char	*handle_eof(t_lasttime **data)
-{
-	char	*lastline;
-	long	count;
-
-	if((*data)->filled == 0)
-		return (free_buffer(data), NULL);
-	if(check_buffer_string((*data), &count) == FT_FOUND_STR)
-	{
-		if (get_string((*data), &lastline, count) == FT_IO_ERROR)
-			return (free_buffer(data), NULL);
-	}
-	else
-	{
-		if(count == 0)
-			return (NULL);
-		lastline = malloc(count + 1);
-		count = -1;
-		while(++count < (*data)->filled)
-			lastline[count] = (*data)->buffer[count];
-		lastline[count] = 0;
-		shift_buffer((*data), count);
-	}
-	free_buffer(data);
-	return (lastline);
-}
-
-void free_buffer(t_lasttime **data)
-{
-	free((*data)->buffer);
-	free((*data));
-	*data = NULL;
+	free(*str);
+	*str = result;
+	return (c);
 }
 
 char	*get_next_line(int fd)
 {
-	static t_lasttime	*data;
-	char				*res;
-	int					status;
-	long				len;
-	
-	if (fd <= -1 || read(fd, 0, 0))
-		return (NULL);
-	if (data == NULL)
-		if(create_new_buffer(&data) == NULL)
-			return (NULL);
-	while(check_buffer_string(data, &len) == FT_FOUND_NO_STR)
+	static char	*remainder;
+	char		*str;
+	int			pos;
+
+	str = malloc(1);
+	str[0] = 0;
+	if (remainder == NULL)
 	{
-		status = read_into_buffer(data, BUFFER_SIZE, fd);
-		if(status == FT_EOF_FOUND)
-			return (handle_eof(&data));
-		if(status == -1)
-			data->buff
+		remainder = malloc(BUFFER_SIZE + 1);
+		if (remainder == NULL)
+			return (NULL);
 	}
-	if (get_string(data, &res, len + 1) == FT_FOUND_STR)
-		return (res);
-	return (NULL);
+	else
+		cat_and_free(&str, remainder);
+	while (!has_char(str, '\n', &pos))
+	{
+		if (read(fd, remainder, BUFFER_SIZE) == -1)
+			return (NULL);
+		if (remainder == NULL)
+			assert(0); // Fileending
+		cat_and_free(&str, remainder);
+	}
+	return (extract_string(&str, &remainder, pos), str);
 }

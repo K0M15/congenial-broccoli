@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <assert.h>
 #include "get_next_line.h"
-#include "get_next_line.c"
+// #include "get_next_line.c"
 
 // void test_get_next_line()
 // {	
@@ -74,8 +74,10 @@ void readwholefile(const char *file)
 	//run_single()
 	setbuf(stdout, NULL);
 	int filedes = open(file, O_RDONLY);
-	if(filedes == -1)
+	if(filedes == -1){
+		printf("File open error\n");
 		return ;
+	}
 	x = get_next_line(filedes);
 	while(i && x)
 	{
@@ -84,13 +86,11 @@ void readwholefile(const char *file)
 		x = get_next_line(filedes);
 		i++;
 	}
+	printf("Errno: %d", errno);
 	close(filedes);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	// readwholefile("test_file");
-	// readwholefile("tf_2");
-	readwholefile("tf_empty");
-	// readwholefile("tf_empty2");
+	readwholefile(argv[argc-1]);
 }
