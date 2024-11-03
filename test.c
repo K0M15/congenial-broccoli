@@ -81,16 +81,35 @@ void readwholefile(const char *file)
 	x = get_next_line(filedes);
 	while(i && x)
 	{
+		if(i == 2)
+			close(filedes);
 		printf("%s", x);
 		free(x); 
 		x = get_next_line(filedes);
+		if(i == 2){
+			filedes = open(file, O_RDONLY);
+			x = "test";
+		}
 		i++;
 	}
-	printf("Errno: %d", errno);
+	if(errno)
+		printf("\nErrno: %d\n", errno);
 	close(filedes);
+}
+
+void check_invalid_fd()
+{
+	char *x = get_next_line(13);
+	printf("%s\n", x);
+	if (x != NULL)
+	{
+		printf("Errno: %d\n", errno);
+		assert(0);
+	}
 }
 
 int main(int argc, char **argv)
 {
+	// check_invalid_fd();
 	readwholefile(argv[argc-1]);
 }
