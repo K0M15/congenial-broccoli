@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:51:20 by afelger           #+#    #+#             */
-/*   Updated: 2024/11/04 15:25:01 by afelger          ###   ########.fr       */
+/*   Updated: 2024/11/07 14:47:00 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,8 @@ void	ft_cleanup(char **remainder, char **str)
 	}
 	if (str != NULL)
 	{
-		free(*str);
+		if (*str != NULL)
+			free(*str);
 		*str = NULL;
 	}
 }
@@ -53,7 +54,7 @@ int	ft_has_char(char *str, char c, int *pos)
 	return (0);
 }
 
-int	cat_and_free(char **dest, char *src, int read_size)
+int	cat_and_free(char **dest, char **src, int read_size)
 {
 	int		dest_len;
 	char	*dest_new;
@@ -62,8 +63,8 @@ int	cat_and_free(char **dest, char *src, int read_size)
 
 	dest_len = ft_strlen(*dest) + 1;
 	dest_new = malloc(dest_len + read_size);
-	if (!dest_new)
-		return (ft_cleanup(&src, dest), 0);
+	if (dest_new == NULL)
+		return (ft_cleanup(src, dest), 0);
 	c = 0;
 	while ((*dest)[c])
 	{
@@ -73,7 +74,7 @@ int	cat_and_free(char **dest, char *src, int read_size)
 	i = 0;
 	while (i < read_size)
 	{
-		dest_new[c + i] = src[i];
+		dest_new[c + i] = (*src)[i];
 		i++;
 	}
 	dest_new[c + i] = 0;

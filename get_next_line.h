@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:45:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/11/04 15:06:34 by afelger          ###   ########.fr       */
+/*   Updated: 2024/11/07 14:49:44 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ char	*get_next_line(int fd);
  * @param pos		(int) The last index byte to copy
  * @return 1 if successfull, 0 if io error occures
  */
-int		extract_string(char **str, char *remainder, int pos);
+int		extract_string(char **str, char **remainder, int pos);
 /**
  * Handles the end of the file, replaces str with, frees remainder, replaces str
  */
@@ -59,7 +59,7 @@ int		setup_remainder(char **remainder, char **str);
  * @param read_size	(int) length of src
  * @return (int) 
  */
-int		cat_and_free(char **dest, char *src, int n);
+int		cat_and_free(char **dest, char **src, int n);
 /**
  * Counts the length of a string
  */
