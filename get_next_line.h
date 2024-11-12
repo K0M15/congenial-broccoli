@@ -6,7 +6,7 @@
 /*   By: afelger <afelger@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/21 09:45:38 by afelger           #+#    #+#             */
-/*   Updated: 2024/11/07 14:49:44 by afelger          ###   ########.fr       */
+/*   Updated: 2024/11/07 14:56:34 by afelger          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,6 @@
 
 # include <unistd.h>
 # include <stdlib.h>
-# include <assert.h>
 
 # ifndef BUFFER_SIZE
 #  define BUFFER_SIZE 1
